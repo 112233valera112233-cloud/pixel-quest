@@ -1,56 +1,25 @@
 class Auth {
     constructor() {
-        this.currentUser = null;
+        this.currentUser = DB.getCurrentUser();
         this.isAdmin = false;
         this.init();
     }
 
     init() {
-        auth.onAuthStateChanged((user) => {
-            this.currentUser = user;
-            this.isAdmin = user && user.email === 'admin@pixelquest.ru';
-            this.updateUI();
-            
-            if (user) {
-                window.dispatchEvent(new CustomEvent('userLoggedIn', { detail: { user, isAdmin: this.isAdmin } }));
-            } else {
-                window.dispatchEvent(new CustomEvent('userLoggedOut'));
-            }
+        this.updateUI();
+        if (this.currentUser) {
+            window.dispatchEvent(new CustomEvent('userLoggedIn', { detail: { user: this.currentUser, isAdmin: this.isAdmin } }));
+        }
+
+        document.getElementById('login-btn')?.addEventListener('click', () => this.showModal('login'));
+        document.getElementById('register-btn')?.addEventListener('click', () => this.showModal('register'));
+        document.getElementById('logout-btn')?.addEventListener('click', () => this.logout());
+        document.querySelector('#auth-modal .close')?.addEventListener('click', () => {
+            document.getElementById('auth-modal').style.display = 'none';
         });
-
-        this.setupEventListeners();
-    }
-
-    setupEventListeners() {
-        const loginBtn = document.getElementById('login-btn');
-        const registerBtn = document.getElementById('register-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const authModal = document.getElementById('auth-modal');
-        const loginForm = document.getElementById('login-form');
-        const switchToRegister = document.getElementById('switch-to-register');
-        const closeModal = document.querySelector('.close');
-
-        loginBtn?.addEventListener('click', () => this.showModal('login'));
-        registerBtn?.addEventListener('click', () => this.showModal('register'));
-        logoutBtn?.addEventListener('click', () => this.logout());
-        
-        loginForm?.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.login();
-        });
-
-        switchToRegister?.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.showModal('register');
-        });
-
-        closeModal?.addEventListener('click', () => {
-            authModal.style.display = 'none';
-        });
-
         window.addEventListener('click', (e) => {
-            if (e.target === authModal) {
-                authModal.style.display = 'none';
+            if (e.target.id === 'auth-modal') {
+                document.getElementById('auth-modal').style.display = 'none';
             }
         });
     }
@@ -58,12 +27,12 @@ class Auth {
     showModal(type) {
         const modal = document.getElementById('auth-modal');
         const container = document.getElementById('auth-form-container');
-        
+
         if (type === 'login') {
             container.innerHTML = `
                 <h2>Вход</h2>
                 <form id="login-form">
-                    <input type="email" id="login-email" placeholder="Email" required>
+                    <input type="text" id="login-email" placeholder="Имя" required>
                     <input type="password" id="login-password" placeholder="Пароль" required>
                     <button type="submit" class="btn btn-primary">Войти</button>
                 </form>
@@ -74,89 +43,97 @@ class Auth {
                 <h2>Регистрация</h2>
                 <form id="register-form">
                     <input type="text" id="register-name" placeholder="Имя" required>
-                    <input type="email" id="register-email" placeholder="Email" required>
-                    <input type="password" id="register-password" placeholder="Пароль (мин. 6 символов)" required>
+                    <input type="password" id="register-password" placeholder="Пароль (мин. 4 символа)" required>
                     <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
                 </form>
                 <p class="switch-auth">Уже есть аккаунт? <a href="#" id="switch-to-login">Войти</a></p>
             `;
-            
-            document.getElementById('register-form')?.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.register();
-            });
-            
-            document.getElementById('switch-to-login')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.showModal('login');
-            });
         }
-        
+
         modal.style.display = 'flex';
-        this.setupEventListeners();
+
+        document.getElementById('login-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.login();
+        });
+        document.getElementById('register-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.register();
+        });
+        document.getElementById('switch-to-register')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showModal('register');
+        });
+        document.getElementById('switch-to-login')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showModal('login');
+        });
     }
 
-    async login() {
-        const email = document.getElementById('login-email').value;
+    login() {
+        const name = document.getElementById('login-email').value.trim();
         const password = document.getElementById('login-password').value;
-        
-        try {
-            await auth.signInWithEmailAndPassword(email, password);
-            document.getElementById('auth-modal').style.display = 'none';
-        } catch (error) {
-            alert('Ошибка входа: ' + error.message);
+        const users = DB.getUsers();
+        const user = users[name];
+
+        if (!user || user.password !== password) {
+            alert('Неверное имя или пароль');
+            return;
         }
+
+        this.currentUser = user;
+        DB.setCurrentUser(user);
+        document.getElementById('auth-modal').style.display = 'none';
+        this.updateUI();
+        window.dispatchEvent(new CustomEvent('userLoggedIn', { detail: { user, isAdmin: this.isAdmin } }));
     }
 
-    async register() {
-        const name = document.getElementById('register-name').value;
-        const email = document.getElementById('register-email').value;
+    register() {
+        const name = document.getElementById('register-name').value.trim();
         const password = document.getElementById('register-password').value;
-        
-        try {
-            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-            await userCredential.user.updateProfile({ displayName: name });
-            
-            await db.collection('users').doc(userCredential.user.uid).set({
-                uid: userCredential.user.uid,
-                email: email,
-                displayName: name,
-                level: 1,
-                totalXP: 0,
-                attributes: {
-                    strength: 1,
-                    intelligence: 1,
-                    agility: 1,
-                    endurance: 1
-                },
-                attributePoints: 0,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            document.getElementById('auth-modal').style.display = 'none';
-        } catch (error) {
-            alert('Ошибка регистрации: ' + error.message);
+
+        if (password.length < 4) {
+            alert('Пароль минимум 4 символа');
+            return;
         }
+
+        const users = DB.getUsers();
+        if (users[name]) {
+            alert('Пользователь уже существует');
+            return;
+        }
+
+        const user = {
+            uid: name,
+            displayName: name,
+            password: password,
+            level: 1,
+            totalXP: 0,
+            attributes: { strength: 1, intelligence: 1, agility: 1, endurance: 1 },
+            attributePoints: 0
+        };
+
+        users[name] = user;
+        DB.saveUsers(users);
+
+        this.currentUser = user;
+        DB.setCurrentUser(user);
+        document.getElementById('auth-modal').style.display = 'none';
+        this.updateUI();
+        window.dispatchEvent(new CustomEvent('userLoggedIn', { detail: { user, isAdmin: this.isAdmin } }));
     }
 
-    async logout() {
-        await auth.signOut();
+    logout() {
+        this.currentUser = null;
+        DB.clearCurrentUser();
+        this.updateUI();
+        window.dispatchEvent(new CustomEvent('userLoggedOut'));
     }
 
     updateUI() {
-        const loginBtn = document.getElementById('login-btn');
-        const registerBtn = document.getElementById('register-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        
-        if (this.currentUser) {
-            loginBtn.style.display = 'none';
-            registerBtn.style.display = 'none';
-            logoutBtn.style.display = 'block';
-        } else {
-            loginBtn.style.display = 'block';
-            registerBtn.style.display = 'block';
-            logoutBtn.style.display = 'none';
-        }
+        document.getElementById('login-btn').style.display = this.currentUser ? 'none' : 'block';
+        document.getElementById('register-btn').style.display = this.currentUser ? 'none' : 'block';
+        document.getElementById('logout-btn').style.display = this.currentUser ? 'block' : 'none';
     }
 }
 

@@ -10,120 +10,109 @@ class Tasks {
             this.currentUserId = e.detail.user.uid;
             this.loadTasks();
         });
-
         window.addEventListener('userLoggedOut', () => {
             this.currentUserId = null;
             this.tasks = [];
             this.render();
         });
-
         document.getElementById('add-task-btn')?.addEventListener('click', () => this.showTaskModal());
         document.getElementById('task-form')?.addEventListener('submit', (e) => {
             e.preventDefault();
             this.saveTask();
         });
-
         document.querySelector('#task-modal .close')?.addEventListener('click', () => {
             document.getElementById('task-modal').style.display = 'none';
         });
     }
 
-    async loadTasks() {
+    loadTasks() {
         if (!this.currentUserId) return;
-        
-        const snapshot = await db.collection('tasks')
-            .where('userId', '==', this.currentUserId)
-            .orderBy('createdAt', 'desc')
-            .get();
-        
-        this.tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const allTasks = DB.getTasks();
+        this.tasks = allTasks.filter(t => t.userId === this.currentUserId);
         this.render();
     }
 
     showTaskModal(task = null) {
-        const modal = document.getElementById('task-modal');
-        const title = document.getElementById('task-modal-title');
-        const idField = document.getElementById('task-id');
-        const titleField = document.getElementById('task-title');
-        const descField = document.getElementById('task-description');
-        const diffField = document.getElementById('task-difficulty');
-        
-        if (task) {
-            title.textContent = 'Редактировать задачу';
-            idField.value = task.id;
-            titleField.value = task.title;
-            descField.value = task.description || '';
-            diffField.value = task.difficulty;
-        } else {
-            title.textContent = 'Новая задача';
-            idField.value = '';
-            titleField.value = '';
-            descField.value = '';
-            diffField.value = 'easy';
+        if (!this.currentUserId) {
+            alert('Войдите, чтобы добавить задачу');
+            return;
         }
-        
+        const modal = document.getElementById('task-modal');
+        document.getElementById('task-modal-title').textContent = task ? 'Редактировать задачу' : 'Новая задача';
+        document.getElementById('task-id').value = task ? task.id : '';
+        document.getElementById('task-title').value = task ? task.title : '';
+        document.getElementById('task-description').value = task ? (task.description || '') : '';
+        document.getElementById('task-difficulty').value = task ? task.difficulty : 'easy';
         modal.style.display = 'flex';
     }
 
-    async saveTask() {
+    saveTask() {
         const id = document.getElementById('task-id').value;
-        const title = document.getElementById('task-title').value;
-        const description = document.getElementById('task-description').value;
+        const title = document.getElementById('task-title').value.trim();
+        const description = document.getElementById('task-description').value.trim();
         const difficulty = document.getElementById('task-difficulty').value;
-        
         const xpMap = { easy: 50, medium: 150, hard: 300 };
-        const taskData = {
-            userId: this.currentUserId,
-            title,
-            description,
-            difficulty,
-            xpReward: xpMap[difficulty],
-            completed: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        
+
+        const allTasks = DB.getTasks();
+
         if (id) {
-            await db.collection('tasks').doc(id).update(taskData);
+            const idx = allTasks.findIndex(t => t.id === id);
+            if (idx !== -1) {
+                allTasks[idx].title = title;
+                allTasks[idx].description = description;
+                allTasks[idx].difficulty = difficulty;
+                allTasks[idx].xpReward = xpMap[difficulty];
+            }
         } else {
-            await db.collection('tasks').add(taskData);
+            allTasks.push({
+                id: Date.now().toString(),
+                userId: this.currentUserId,
+                title,
+                description,
+                difficulty,
+                xpReward: xpMap[difficulty],
+                completed: false,
+                createdAt: new Date().toISOString()
+            });
         }
-        
+
+        DB.saveTasks(allTasks);
         document.getElementById('task-modal').style.display = 'none';
         this.loadTasks();
     }
 
-    async completeTask(taskId) {
-        const task = this.tasks.find(t => t.id === taskId);
+    completeTask(taskId) {
+        const allTasks = DB.getTasks();
+        const task = allTasks.find(t => t.id === taskId);
         if (!task || task.completed) return;
-        
-        await db.collection('tasks').doc(taskId).update({
-            completed: true,
-            completedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        window.dispatchEvent(new CustomEvent('xpEarned', { 
-            detail: { amount: task.xpReward } 
-        }));
-        
+
+        task.completed = true;
+        task.completedAt = new Date().toISOString();
+        DB.saveTasks(allTasks);
+
+        window.dispatchEvent(new CustomEvent('xpEarned', { detail: { amount: task.xpReward } }));
         this.loadTasks();
     }
 
-    async deleteTask(taskId) {
+    deleteTask(taskId) {
         if (!confirm('Удалить задачу?')) return;
-        
-        await db.collection('tasks').doc(taskId).delete();
+        let allTasks = DB.getTasks();
+        allTasks = allTasks.filter(t => t.id !== taskId);
+        DB.saveTasks(allTasks);
         this.loadTasks();
     }
 
     render() {
         const list = document.getElementById('tasks-list');
         if (!list) return;
-        
+
         if (this.tasks.length === 0) {
-            list.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">Нет задач. Добавьте первую!</p>';
+            list.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">Нет задач. Добавьте первую!</p>';
             return;
         }
-        
+
+        const diffLabels = { easy: 'Лёгкая', medium: 'Средняя', hard: 'Сложная' };
+
         list.innerHTML = this.tasks.map(task => `
             <div class="task-item ${task.difficulty} ${task.completed ? 'completed' : ''}">
                 <div class="task-header">
@@ -135,16 +124,11 @@ class Tasks {
                     </div>
                 </div>
                 <div class="task-meta">
-                    ${this.getDifficultyLabel(task.difficulty)} • +${task.xpReward} XP
+                    ${diffLabels[task.difficulty]} • +${task.xpReward} XP
                     ${task.completed ? ' • ✓ ВЫПОЛНЕНО' : ''}
                 </div>
             </div>
         `).join('');
-    }
-
-    getDifficultyLabel(difficulty) {
-        const labels = { easy: 'Лёгкая', medium: 'Средняя', hard: 'Сложная' };
-        return labels[difficulty] || difficulty;
     }
 }
 
