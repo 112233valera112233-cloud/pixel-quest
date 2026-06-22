@@ -5,130 +5,426 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pixel Quest</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0f0f23;
+            --bg-secondary: #1a1a2e;
+            --bg-tertiary: #16213e;
+            --accent-red: #e94560;
+            --accent-blue: #0f3460;
+            --accent-green: #16c79a;
+            --accent-yellow: #f5a623;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+        }
+        body { font-family: 'Roboto Mono', monospace; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .logo { font-family: 'Press Start 2P', cursive; font-size: 1.2rem; color: var(--accent-red); }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: var(--bg-secondary); border-bottom: 2px solid var(--accent-blue); flex-wrap: wrap; gap: 0.5rem; }
+        .nav { display: flex; gap: 1.5rem; }
+        .nav-link { color: var(--text-secondary); text-decoration: none; font-family: 'Press Start 2P', cursive; font-size: 0.7rem; transition: color 0.3s; cursor: pointer; }
+        .nav-link:hover, .nav-link.active { color: var(--accent-green); }
+        .btn { padding: 0.5rem 1rem; border: none; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background: var(--accent-red); color: white; }
+        .btn-secondary { background: var(--accent-blue); color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-small { padding: 0.3rem 0.6rem; font-size: 0.5rem; }
+        .layout { display: flex; gap: 1.5rem; padding: 1.5rem; max-width: 1400px; margin: 0 auto; }
+        .sidebar { flex: 0 0 280px; }
+        .content { flex: 1; }
+        .character-panel, .tasks-list { background: var(--bg-secondary); border: 2px solid var(--accent-blue); border-radius: 8px; padding: 1rem; }
+        .character-sprite { background: var(--bg-primary); border: 4px solid #333; padding: 1.5rem; text-align: center; margin-bottom: 1rem; }
+        .pixel-character { width: 64px; height: 64px; margin: 0 auto; background: linear-gradient(135deg, var(--accent-red), var(--accent-blue)); border-radius: 4px; position: relative; }
+        .pixel-character::before { content: ''; position: absolute; top: 10px; left: 18px; width: 8px; height: 8px; background: white; border-radius: 50%; box-shadow: 20px 0 0 white; }
+        .character-level { font-family: 'Press Start 2P', cursive; font-size: 0.8rem; color: var(--accent-red); text-align: center; margin-bottom: 1rem; }
+        .attributes { margin-bottom: 1rem; }
+        .attr { display: flex; align-items: center; margin: 0.5rem 0; font-size: 0.7rem; }
+        .attr-name { width: 40px; color: var(--text-secondary); }
+        .attr-bar { flex: 1; height: 8px; background: #333; margin: 0 0.5rem; }
+        .attr-fill { height: 100%; transition: width 0.3s; }
+        .attr-fill.strength { background: var(--accent-red); }
+        .attr-fill.intelligence { background: var(--accent-blue); }
+        .attr-fill.agility { background: var(--accent-green); }
+        .attr-fill.endurance { background: var(--accent-yellow); }
+        .attr-value { width: 20px; text-align: right; color: var(--accent-green); }
+        .xp-section { background: var(--bg-tertiary); padding: 0.75rem; border-radius: 4px; }
+        .xp-text { font-size: 0.7rem; color: var(--accent-green); margin-bottom: 0.5rem; }
+        .xp-bar { height: 12px; background: #333; }
+        .xp-fill { height: 100%; background: linear-gradient(90deg, var(--accent-red), var(--accent-yellow)); transition: width 0.3s; }
+        .attr-points { margin-top: 1rem; padding: 0.75rem; background: var(--accent-green); color: var(--bg-primary); border-radius: 4px; text-align: center; }
+        .tasks-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .task-item { background: var(--bg-primary); border-left: 4px solid var(--accent-green); padding: 1rem; margin-bottom: 0.75rem; border-radius: 0 4px 4px 0; transition: all 0.3s; }
+        .task-item:hover { transform: translateX(5px); }
+        .task-item.completed { border-left-color: var(--text-secondary); opacity: 0.7; }
+        .task-item.easy { border-left-color: var(--accent-green); }
+        .task-item.medium { border-left-color: var(--accent-yellow); }
+        .task-item.hard { border-left-color: var(--accent-red); }
+        .task-header { display: flex; justify-content: space-between; align-items: center; }
+        .task-title { font-family: 'Press Start 2P', cursive; font-size: 0.7rem; color: var(--accent-green); }
+        .task-item.completed .task-title { text-decoration: line-through; color: var(--text-secondary); }
+        .task-meta { font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.5rem; }
+        .task-actions { display: flex; gap: 0.5rem; }
+        .task-actions button { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1rem; transition: color 0.3s; }
+        .task-actions button:hover { color: var(--accent-red); }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal.show { display: flex; }
+        .modal-content { background: var(--bg-secondary); padding: 2rem; border-radius: 8px; border: 2px solid var(--accent-blue); width: 90%; max-width: 400px; position: relative; }
+        .close { position: absolute; top: 1rem; right: 1rem; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; }
+        input, textarea, select { width: 100%; padding: 0.75rem; margin-bottom: 1rem; background: var(--bg-primary); border: 1px solid #333; color: var(--text-primary); font-family: 'Roboto Mono', monospace; border-radius: 4px; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent-green); }
+        .switch-auth { text-align: center; margin-top: 1rem; color: var(--text-secondary); font-size: 0.8rem; }
+        .switch-auth a { color: var(--accent-green); text-decoration: none; cursor: pointer; }
+        .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; border: 2px solid var(--accent-blue); text-align: center; }
+        .stat-value { font-family: 'Press Start 2P', cursive; font-size: 1.5rem; color: var(--accent-green); margin-bottom: 0.5rem; }
+        .stat-label { color: var(--text-secondary); font-size: 0.8rem; }
+        .admin-user { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-secondary); margin-bottom: 0.5rem; border-radius: 4px; }
+        .user-info { display: flex; align-items: center; gap: 1rem; }
+        .user-email { color: var(--accent-green); }
+        .user-level { color: var(--accent-yellow); font-size: 0.8rem; }
+        .page { display: none; }
+        .page.active { display: block; }
+        @media (max-width: 768px) {
+            .layout { flex-direction: column; }
+            .sidebar { flex: none; }
+            .header { justify-content: center; }
+        }
+    </style>
 </head>
 <body>
-    <div id="app">
-        <header class="header">
-            <h1 class="logo">PIXEL QUEST</h1>
-            <nav class="nav">
-                <a href="#" data-page="tasks" class="nav-link active">Задачи</a>
-                <a href="#" data-page="shop" class="nav-link">Магазин</a>
-                <a href="#" data-page="leaders" class="nav-link">Лидеры</a>
-                <a href="#" data-page="profile" class="nav-link">Профиль</a>
-            </nav>
-            <div class="auth-buttons">
-                <button id="login-btn" class="btn btn-primary">Вход</button>
-                <button id="register-btn" class="btn btn-secondary">Регистрация</button>
-                <button id="logout-btn" class="btn btn-danger" style="display:none;">Выход</button>
-            </div>
-        </header>
+    <header class="header">
+        <h1 class="logo">PIXEL QUEST</h1>
+        <nav class="nav">
+            <span class="nav-link active" data-page="tasks">Задачи</span>
+            <span class="nav-link" data-page="leaders">Лидеры</span>
+            <span class="nav-link" data-page="profile">Профиль</span>
+        </nav>
+        <div class="auth-buttons">
+            <button id="login-btn" class="btn btn-primary">Вход</button>
+            <button id="register-btn" class="btn btn-secondary">Регистрация</button>
+            <button id="logout-btn" class="btn btn-danger" style="display:none;">Выход</button>
+        </div>
+    </header>
 
-        <main class="main">
-            <!-- Auth Modal -->
-            <div id="auth-modal" class="modal" style="display:none;">
-                <div class="modal-content">
-                    <span class="close">&times;</span>
-                    <div id="auth-form-container">
-                        <h2>Вход</h2>
-                        <form id="login-form">
-                            <input type="email" id="login-email" placeholder="Email" required>
-                            <input type="password" id="login-password" placeholder="Пароль" required>
-                            <button type="submit" class="btn btn-primary">Войти</button>
-                        </form>
-                        <p class="switch-auth">Нет аккаунта? <a href="#" id="switch-to-register">Зарегистрироваться</a></p>
+    <main class="main">
+        <div id="auth-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" id="auth-close">&times;</span>
+                <div id="auth-form-container"></div>
+            </div>
+        </div>
+
+        <div id="task-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" id="task-close">&times;</span>
+                <h2 id="task-modal-title">Новая задача</h2>
+                <form id="task-form">
+                    <input type="hidden" id="task-id">
+                    <input type="text" id="task-title" placeholder="Название задачи" required>
+                    <textarea id="task-description" placeholder="Описание (необязательно)"></textarea>
+                    <select id="task-difficulty" required>
+                        <option value="easy">Лёгкая (+50 XP)</option>
+                        <option value="medium">Средняя (+150 XP)</option>
+                        <option value="hard">Сложная (+300 XP)</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="page-tasks" class="page active">
+            <div class="layout">
+                <aside class="sidebar">
+                    <div class="character-panel">
+                        <h3>Ваш персонаж</h3>
+                        <div class="character-sprite"><div class="pixel-character"></div></div>
+                        <div class="character-level">Ур. <span id="char-level">1</span></div>
+                        <div class="attributes">
+                            <div class="attr"><span class="attr-name">СИЛА</span><div class="attr-bar"><div class="attr-fill strength" id="attr-strength" style="width:5%"></div></div><span class="attr-value" id="val-strength">1</span></div>
+                            <div class="attr"><span class="attr-name">ИНТ</span><div class="attr-bar"><div class="attr-fill intelligence" id="attr-intelligence" style="width:5%"></div></div><span class="attr-value" id="val-intelligence">1</span></div>
+                            <div class="attr"><span class="attr-name">ЛОВ</span><div class="attr-bar"><div class="attr-fill agility" id="attr-agility" style="width:5%"></div></div><span class="attr-value" id="val-agility">1</span></div>
+                            <div class="attr"><span class="attr-name">ВЫН</span><div class="attr-bar"><div class="attr-fill endurance" id="attr-endurance" style="width:5%"></div></div><span class="attr-value" id="val-endurance">1</span></div>
+                        </div>
+                        <div class="xp-section">
+                            <div class="xp-text">XP: <span id="xp-current">0</span> / <span id="xp-needed">500</span></div>
+                            <div class="xp-bar"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
+                        </div>
+                        <div id="attr-points" class="attr-points" style="display:none;">
+                            <p>Очки атрибутов: <span id="available-points">0</span></p>
+                            <button class="btn btn-small btn-secondary" id="distribute-btn">Распределить</button>
+                        </div>
                     </div>
-                </div>
+                </aside>
+                <section class="content">
+                    <div class="tasks-header">
+                        <h2>Мои задачи</h2>
+                        <button id="add-task-btn" class="btn btn-primary">+ Новая</button>
+                    </div>
+                    <div id="tasks-list" class="tasks-list"></div>
+                </section>
             </div>
+        </div>
 
-            <!-- Tasks Page -->
-            <div id="page-tasks" class="page active">
-                <div class="layout">
-                    <aside class="sidebar">
-                        <div class="character-panel">
-                            <h3>Ваш персонаж</h3>
-                            <div class="character-sprite" id="character-sprite">
-                                <div class="pixel-character"></div>
-                            </div>
-                            <div class="character-level">Ур. <span id="char-level">1</span></div>
-                            <div class="attributes">
-                                <div class="attr">
-                                    <span class="attr-name">СИЛА</span>
-                                    <div class="attr-bar"><div class="attr-fill strength" id="attr-strength"></div></div>
-                                    <span class="attr-value" id="val-strength">1</span>
-                                </div>
-                                <div class="attr">
-                                    <span class="attr-name">ИНТ</span>
-                                    <div class="attr-bar"><div class="attr-fill intelligence" id="attr-intelligence"></div></div>
-                                    <span class="attr-value" id="val-intelligence">1</span>
-                                </div>
-                                <div class="attr">
-                                    <span class="attr-name">ЛОВ</span>
-                                    <div class="attr-bar"><div class="attr-fill agility" id="attr-agility"></div></div>
-                                    <span class="attr-value" id="val-agility">1</span>
-                                </div>
-                                <div class="attr">
-                                    <span class="attr-name">ВЫН</span>
-                                    <div class="attr-bar"><div class="attr-fill endurance" id="attr-endurance"></div></div>
-                                    <span class="attr-value" id="val-endurance">1</span>
-                                </div>
-                            </div>
-                            <div class="xp-section">
-                                <div class="xp-text">XP: <span id="xp-current">0</span> / <span id="xp-needed">500</span></div>
-                                <div class="xp-bar"><div class="xp-fill" id="xp-fill"></div></div>
-                            </div>
-                            <div id="attr-points" class="attr-points" style="display:none;">
-                                <p>Очки атрибутов: <span id="available-points">0</span></p>
-                                <button class="btn btn-small" id="distribute-btn">Распределить</button>
-                            </div>
-                        </div>
-                    </aside>
-                    <section class="content">
-                        <div class="tasks-header">
-                            <h2>Мои задачи</h2>
-                            <button id="add-task-btn" class="btn btn-primary">+ Новая</button>
-                        </div>
-                        <div id="tasks-list" class="tasks-list"></div>
-                    </section>
-                </div>
+        <div id="page-leaders" class="page">
+            <div style="padding:2rem;max-width:800px;margin:0 auto;">
+                <h2>Таблица лидеров</h2>
+                <div id="leaders-list"></div>
             </div>
+        </div>
 
-            <!-- Task Modal -->
-            <div id="task-modal" class="modal" style="display:none;">
-                <div class="modal-content">
-                    <span class="close">&times;</span>
-                    <h2 id="task-modal-title">Новая задача</h2>
-                    <form id="task-form">
-                        <input type="hidden" id="task-id">
-                        <input type="text" id="task-title" placeholder="Название задачи" required>
-                        <textarea id="task-description" placeholder="Описание (необязательно)"></textarea>
-                        <select id="task-difficulty" required>
-                            <option value="easy">Лёгкая (+50 XP)</option>
-                            <option value="medium">Средняя (+150 XP)</option>
-                            <option value="hard">Сложная (+300 XP)</option>
-                        </select>
-                        <button type="submit" class="btn btn-primary">Сохранить</button>
-                    </form>
-                </div>
+        <div id="page-profile" class="page">
+            <div style="padding:2rem;max-width:800px;margin:0 auto;">
+                <h2>Профиль</h2>
+                <div id="profile-content"></div>
             </div>
+        </div>
 
-            <!-- Admin Page (hidden) -->
-            <div id="page-admin" class="page" style="display:none;">
+        <div id="page-admin" class="page">
+            <div style="padding:2rem;max-width:800px;margin:0 auto;">
                 <h2>Панель администратора</h2>
                 <div class="admin-stats" id="admin-stats"></div>
-                <div class="admin-users" id="admin-users"></div>
+                <div id="admin-users"></div>
             </div>
-        </main>
-    </div>
+        </div>
+    </main>
 
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-    <script src="js/firebase-config.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/tasks.js"></script>
-    <script src="js/character.js"></script>
-    <script src="js/admin.js"></script>
-    <script src="js/app.js"></script>
+    <script>
+    const DB = {
+        getUsers() { return JSON.parse(localStorage.getItem('pq_users') || '{}'); },
+        saveUsers(u) { localStorage.setItem('pq_users', JSON.stringify(u)); },
+        getTasks() { return JSON.parse(localStorage.getItem('pq_tasks') || '[]'); },
+        saveTasks(t) { localStorage.setItem('pq_tasks', JSON.stringify(t)); },
+        getCurrentUser() { return JSON.parse(localStorage.getItem('pq_currentUser') || 'null'); },
+        setCurrentUser(u) { localStorage.setItem('pq_currentUser', JSON.stringify(u)); },
+        clearCurrentUser() { localStorage.removeItem('pq_currentUser'); }
+    };
+
+    let currentUser = DB.getCurrentUser();
+    const DiffLabels = { easy: 'Лёгкая', medium: 'Средняя', hard: 'Сложная' };
+    const XpMap = { easy: 50, medium: 150, hard: 300 };
+
+    function updateAuthUI() {
+        document.getElementById('login-btn').style.display = currentUser ? 'none' : 'inline-block';
+        document.getElementById('register-btn').style.display = currentUser ? 'none' : 'inline-block';
+        document.getElementById('logout-btn').style.display = currentUser ? 'inline-block' : 'none';
+    }
+
+    function showAuthModal(type) {
+        const container = document.getElementById('auth-form-container');
+        const modal = document.getElementById('auth-modal');
+        if (type === 'login') {
+            container.innerHTML = '<h2>Вход</h2><form id="login-form"><input type="text" id="login-name" placeholder="Имя" required><input type="password" id="login-pass" placeholder="Пароль" required><button type="submit" class="btn btn-primary">Войти</button></form><p class="switch-auth">Нет аккаунта? <a id="sw-reg">Зарегистрироваться</a></p>';
+            document.getElementById('login-form').onsubmit = function(e) {
+                e.preventDefault();
+                const n = document.getElementById('login-name').value.trim();
+                const p = document.getElementById('login-pass').value;
+                const users = DB.getUsers();
+                if (!users[n] || users[n].password !== p) { alert('Неверное имя или пароль'); return; }
+                currentUser = users[n];
+                DB.setCurrentUser(currentUser);
+                modal.classList.remove('show');
+                updateAuthUI();
+                updateCharacterUI();
+                loadTasks();
+            };
+        } else {
+            container.innerHTML = '<h2>Регистрация</h2><form id="reg-form"><input type="text" id="reg-name" placeholder="Имя" required><input type="password" id="reg-pass" placeholder="Пароль (мин. 4 символа)" required><button type="submit" class="btn btn-primary">Зарегистрироваться</button></form><p class="switch-auth">Уже есть аккаунт? <a id="sw-login">Войти</a></p>';
+            document.getElementById('reg-form').onsubmit = function(e) {
+                e.preventDefault();
+                const n = document.getElementById('reg-name').value.trim();
+                const p = document.getElementById('reg-pass').value;
+                if (p.length < 4) { alert('Пароль минимум 4 символа'); return; }
+                const users = DB.getUsers();
+                if (users[n]) { alert('Пользователь уже существует'); return; }
+                const user = { uid: n, displayName: n, password: p, level: 1, totalXP: 0, attributes: { strength: 1, intelligence: 1, agility: 1, endurance: 1 }, attributePoints: 0 };
+                users[n] = user;
+                DB.saveUsers(users);
+                currentUser = user;
+                DB.setCurrentUser(user);
+                modal.classList.remove('show');
+                updateAuthUI();
+                updateCharacterUI();
+                loadTasks();
+            };
+        }
+        modal.classList.add('show');
+        document.getElementById('sw-reg')?.addEventListener('click', () => showAuthModal('register'));
+        document.getElementById('sw-login')?.addEventListener('click', () => showAuthModal('login'));
+    }
+
+    document.getElementById('login-btn').addEventListener('click', () => showAuthModal('login'));
+    document.getElementById('register-btn').addEventListener('click', () => showAuthModal('register'));
+    document.getElementById('logout-btn').addEventListener('click', () => {
+        currentUser = null;
+        DB.clearCurrentUser();
+        updateAuthUI();
+        updateCharacterUI();
+        loadTasks();
+    });
+    document.getElementById('auth-close').addEventListener('click', () => document.getElementById('auth-modal').classList.remove('show'));
+    document.getElementById('task-close').addEventListener('click', () => document.getElementById('task-modal').classList.remove('show'));
+
+    function updateCharacterUI() {
+        if (!currentUser) {
+            document.getElementById('char-level').textContent = '1';
+            ['strength','intelligence','agility','endurance'].forEach(a => {
+                document.getElementById('attr-' + a).style.width = '5%';
+                document.getElementById('val-' + a).textContent = '1';
+            });
+            document.getElementById('xp-current').textContent = '0';
+            document.getElementById('xp-needed').textContent = '500';
+            document.getElementById('xp-fill').style.width = '0%';
+            document.getElementById('attr-points').style.display = 'none';
+            return;
+        }
+        document.getElementById('char-level').textContent = currentUser.level;
+        const max = 20;
+        ['strength','intelligence','agility','endurance'].forEach(a => {
+            const v = currentUser.attributes[a] || 1;
+            document.getElementById('attr-' + a).style.width = (v/max*100) + '%';
+            document.getElementById('val-' + a).textContent = v;
+        });
+        const xpInLevel = currentUser.totalXP % 500;
+        document.getElementById('xp-current').textContent = currentUser.totalXP;
+        document.getElementById('xp-needed').textContent = currentUser.level * 500;
+        document.getElementById('xp-fill').style.width = (xpInLevel/500*100) + '%';
+        const pp = document.getElementById('attr-points');
+        if (currentUser.attributePoints > 0) { pp.style.display = 'block'; document.getElementById('available-points').textContent = currentUser.attributePoints; }
+        else { pp.style.display = 'none'; }
+    }
+
+    function addXP(amount) {
+        if (!currentUser) return;
+        currentUser.totalXP += amount;
+        const newLevel = Math.floor(currentUser.totalXP / 500) + 1;
+        if (newLevel > currentUser.level) {
+            currentUser.attributePoints += (newLevel - currentUser.level);
+            currentUser.level = newLevel;
+        }
+        saveUser();
+        updateCharacterUI();
+        if (newLevel > 1) alert('Уровень ' + newLevel + '! Получено очко атрибута!');
+    }
+
+    function saveUser() {
+        const users = DB.getUsers();
+        users[currentUser.uid] = currentUser;
+        DB.saveUsers(users);
+        DB.setCurrentUser(currentUser);
+    }
+
+    document.getElementById('distribute-btn').addEventListener('click', () => {
+        if (!currentUser || currentUser.attributePoints <= 0) return;
+        const choice = prompt('Какой атрибут прокачать?\n1 - СИЛА\n2 - ИНТ\n3 - ЛОВ\n4 - ВЫН');
+        const map = { '1': 'strength', '2': 'intelligence', '3': 'agility', '4': 'endurance' };
+        const attr = map[choice];
+        if (attr) { currentUser.attributes[attr]++; currentUser.attributePoints--; saveUser(); updateCharacterUI(); }
+    });
+
+    function loadTasks() {
+        const list = document.getElementById('tasks-list');
+        if (!currentUser) { list.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:2rem;">Войдите, чтобы видеть задачи</p>'; return; }
+        const tasks = DB.getTasks().filter(t => t.userId === currentUser.uid);
+        if (tasks.length === 0) { list.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:2rem;">Нет задач. Добавьте первую!</p>'; return; }
+        list.innerHTML = tasks.map(t => '<div class="task-item ' + t.difficulty + (t.completed ? ' completed' : '') + '"><div class="task-header"><span class="task-title">' + t.title + '</span><div class="task-actions">' + (!t.completed ? '<button onclick="completeTask(\'' + t.id + '\')" title="Выполнено">&#10003;</button>' : '') + '<button onclick="editTask(\'' + t.id + '\')" title="Редактировать">&#9998;</button>' + '<button onclick="deleteTask(\'' + t.id + '\')" title="Удалify">&#10005;</button></div></div><div class="task-meta">' + DiffLabels[t.difficulty] + ' &bull; +' + t.xpReward + ' XP' + (t.completed ? ' &bull; &#10003; ВЫПОЛНЕНО' : '') + '</div></div>').join('');
+    }
+
+    function completeTask(id) {
+        const tasks = DB.getTasks();
+        const t = tasks.find(x => x.id === id);
+        if (!t || t.completed) return;
+        t.completed = true;
+        t.completedAt = new Date().toISOString();
+        DB.saveTasks(tasks);
+        addXP(t.xpReward);
+        loadTasks();
+    }
+
+    function deleteTask(id) {
+        if (!confirm('Удалить задачу?')) return;
+        let tasks = DB.getTasks();
+        tasks = tasks.filter(t => t.id !== id);
+        DB.saveTasks(tasks);
+        loadTasks();
+    }
+
+    function editTask(id) {
+        if (!currentUser) return;
+        const task = DB.getTasks().find(t => t.id === id);
+        if (!task) return;
+        document.getElementById('task-modal-title').textContent = 'Редактировать задачу';
+        document.getElementById('task-id').value = task.id;
+        document.getElementById('task-title').value = task.title;
+        document.getElementById('task-description').value = task.description || '';
+        document.getElementById('task-difficulty').value = task.difficulty;
+        document.getElementById('task-modal').classList.add('show');
+    }
+
+    document.getElementById('add-task-btn').addEventListener('click', () => {
+        if (!currentUser) { alert('Сначала войдите или зарегистрируйтесь'); return; }
+        document.getElementById('task-modal-title').textContent = 'Новая задача';
+        document.getElementById('task-id').value = '';
+        document.getElementById('task-title').value = '';
+        document.getElementById('task-description').value = '';
+        document.getElementById('task-difficulty').value = 'easy';
+        document.getElementById('task-modal').classList.add('show');
+    });
+
+    document.getElementById('task-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!currentUser) return;
+        const id = document.getElementById('task-id').value;
+        const title = document.getElementById('task-title').value.trim();
+        const desc = document.getElementById('task-description').value.trim();
+        const diff = document.getElementById('task-difficulty').value;
+        const tasks = DB.getTasks();
+        if (id) {
+            const idx = tasks.findIndex(t => t.id === id);
+            if (idx !== -1) { tasks[idx].title = title; tasks[idx].description = desc; tasks[idx].difficulty = diff; tasks[idx].xpReward = XpMap[diff]; }
+        } else {
+            tasks.push({ id: Date.now().toString(), userId: currentUser.uid, title, description: desc, difficulty: diff, xpReward: XpMap[diff], completed: false, createdAt: new Date().toISOString() });
+        }
+        DB.saveTasks(tasks);
+        document.getElementById('task-modal').classList.remove('show');
+        loadTasks();
+    });
+
+    function loadLeaders() {
+        const users = Object.values(DB.getUsers()).sort((a, b) => b.totalXP - a.totalXP);
+        const el = document.getElementById('leaders-list');
+        if (users.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);">Пока нет пользователей</p>'; return; }
+        el.innerHTML = users.map((u, i) => '<div class="admin-user"><div class="user-info"><span style="color:var(--accent-yellow);font-family:Press Start 2P;font-size:0.8rem;">#' + (i+1) + '</span><span class="user-email">' + u.displayName + '</span><span class="user-level">Ур. ' + u.level + '</span><span>' + u.totalXP + ' XP</span></div></div>').join('');
+    }
+
+    function loadProfile() {
+        const el = document.getElementById('profile-content');
+        if (!currentUser) { el.innerHTML = '<p style="color:var(--text-secondary);">Войдите, чтобы видеть профиль</p>'; return; }
+        el.innerHTML = '<div class="stat-card" style="margin-bottom:1rem;"><div class="stat-value">' + currentUser.displayName + '</div><div class="stat-label">Уровень ' + currentUser.level + ' | ' + currentUser.totalXP + ' XP</div></div><p style="color:var(--text-secondary);margin-top:1rem;">Данные сохраняются в этом браузере.</p>';
+    }
+
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            const page = link.dataset.page;
+            document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            const el = document.getElementById('page-' + page);
+            if (el) { el.classList.add('active'); el.style.display = 'block'; }
+            link.classList.add('active');
+            if (page === 'leaders') loadLeaders();
+            if (page === 'profile') loadProfile();
+        });
+    });
+
+    document.getElementById('task-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('task-modal')) document.getElementById('task-modal').classList.remove('show');
+    });
+    document.getElementById('auth-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('auth-modal')) document.getElementById('auth-modal').classList.remove('show');
+    });
+
+    updateAuthUI();
+    updateCharacterUI();
+    loadTasks();
+    </script>
 </body>
 </html>
